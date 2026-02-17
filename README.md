@@ -1,36 +1,197 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# AI Interview System
+
+A modern, professional UI for an AI-powered interview platform built with Next.js (App Router) and Tailwind CSS.
+
+## Features
+
+- 🤖 **AI-Powered Interviews**: Seamless integration with AI interview systems
+- 📱 **Responsive Design**: Works perfectly on desktop and mobile devices
+- 🎨 **Modern UI**: Clean, minimal design inspired by Stripe and Notion
+- 🎯 **User-Friendly**: Intuitive interface for both candidates and administrators
+- 🔐 **Secure**: Built with security and privacy in mind
+- ⚡ **Fast**: Optimized for performance with modern React patterns
+
+## Tech Stack
+
+- **Framework**: Next.js 16+ (App Router)
+- **Styling**: Tailwind CSS v4
+- **Animations**: Framer Motion
+- **Icons**: Lucide React
+- **Language**: JavaScript (ES6+)
+
+## Project Structure
+
+```
+app/
+├── components/
+│   ├── ui/
+│   │   ├── Button.js           # Reusable button component
+│   │   ├── Card.js             # Card container component
+│   │   ├── Loader.js           # Loading spinners and skeletons
+│   │   └── StatusIndicator.js  # Interview status indicators
+│   └── layout/
+│       └── InterviewLayout.js  # Shared layout for interview pages
+├── interview/
+│   └── [token]/
+│       ├── page.js             # Interview link validation
+│       ├── verify/
+│       │   └── page.js         # Identity verification
+│       ├── instructions/
+│       │   └── page.js         # Pre-interview instructions
+│       ├── interview/
+│       │   └── page.js         # Live interview interface
+│       └── complete/
+│           └── page.js         # Post-interview completion
+├── globals.css                 # Global styles and Tailwind imports
+├── layout.js                   # Root layout with metadata
+└── page.js                     # Landing page
+```
+
+## Interview Flow
+
+1. **Landing Page** (`/`) - Home page with feature overview
+2. **Interview Link** (`/interview/[token]`) - Token validation and candidate info
+3. **Verification** (`/interview/[token]/verify`) - Email/OTP verification
+4. **Instructions** (`/interview/[token]/instructions`) - Pre-interview setup
+5. **Interview** (`/interview/[token]/interview`) - Live AI interview
+6. **Completion** (`/interview/[token]/complete`) - Success and feedback
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
 
+- Node.js 18+ 
+- npm or yarn
+
+### Installation
+
+1. Clone the repository
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+git clone <repository-url>
+cd interview-agent
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+2. Install dependencies
+```bash
+npm install
+```
 
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
+3. Start the development server
+```bash
+npm run dev
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+4. Open [http://localhost:3000](http://localhost:3000) in your browser
 
-## Learn More
+### Demo Tokens
 
-To learn more about Next.js, take a look at the following resources:
+For testing purposes, you can use these demo tokens:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- `demo-valid` - Valid interview link with sample candidate data
+- `expired` - Expired interview link scenario  
+- `invalid` - Invalid interview link scenario
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Component Documentation
 
-## Deploy on Vercel
+### UI Components
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+#### Button
+```jsx
+import Button from './components/ui/Button';
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+<Button 
+  variant="primary"    // primary, secondary, outline, ghost, danger
+  size="md"           // sm, md, lg
+  loading={false}
+  disabled={false}
+>
+  Click me
+</Button>
+```
+
+#### Card
+```jsx
+import Card from './components/ui/Card';
+
+<Card 
+  padding="md"        // none, sm, md, lg
+  hover={false}       // Enable hover animations
+  className="custom-class"
+>
+  Content
+</Card>
+```
+
+#### StatusIndicator
+```jsx
+import StatusIndicator from './components/ui/StatusIndicator';
+
+<StatusIndicator 
+  status="listening"  // listening, speaking, paused, idle
+  size="md"          // sm, md, lg
+  showLabel={true}
+/>
+```
+
+### Layout Components
+
+#### InterviewLayout
+```jsx
+import InterviewLayout from './components/layout/InterviewLayout';
+
+<InterviewLayout
+  title="Page Title"
+  subtitle="Page subtitle"
+  showProgress={true}
+  currentStep={1}
+  totalSteps={5}
+>
+  Page content
+</InterviewLayout>
+```
+
+## Styling Guidelines
+
+- Uses Tailwind CSS for utility-first styling
+- Custom animations with Framer Motion
+- Consistent spacing scale (4px base unit)
+- Professional color palette (grays, blues)
+- Responsive breakpoints: sm (640px), md (768px), lg (1024px)
+
+## Browser Support
+
+- Chrome/Chromium 90+
+- Firefox 90+
+- Safari 14+
+- Edge 90+
+
+## Performance
+
+- Optimized bundle size with tree-shaking
+- Lazy loading for routes
+- Efficient re-renders with React best practices
+- Minimal external dependencies
+
+## Accessibility
+
+- WCAG 2.1 AA compliant
+- Keyboard navigation support
+- Screen reader friendly
+- High contrast color ratios
+- Focus management
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+## License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+## Support
+
+For support and questions, please contact the development team.
