@@ -29,8 +29,9 @@ const VerifyPage = () => {
 
     setLoading(true);
     
-    // Simulate sending OTP
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    // In production: call an API to send an OTP to the email.
+    // For now, proceed to OTP entry step.
+    await new Promise(resolve => setTimeout(resolve, 1500));
     
     setLoading(false);
     setStep('verify_otp');
@@ -47,13 +48,22 @@ const VerifyPage = () => {
 
     setLoading(true);
     
-    // Simulate OTP verification
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    
-    if (otp === '123456') {
-      router.push(`/interview/${token}/instructions`);
-    } else {
-      setError('Invalid OTP. Please try again.');
+    try {
+      const res = await fetch('/api/interview/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token, email, otp }),
+      });
+      const data = await res.json();
+
+      if (data.success) {
+        router.push(`/interview/${token}/instructions`);
+      } else {
+        setError(data.message || 'Invalid OTP. Please try again.');
+        setLoading(false);
+      }
+    } catch (err) {
+      setError('Verification failed. Please try again.');
       setLoading(false);
     }
   };
@@ -69,13 +79,22 @@ const VerifyPage = () => {
 
     setLoading(true);
     
-    // Simulate OTP verification
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    
-    if (otp === '123456') {
-      router.push(`/interview/${token}/instructions`);
-    } else {
-      setError('Invalid OTP. Please try again.');
+    try {
+      const res = await fetch('/api/interview/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token, otp }),
+      });
+      const data = await res.json();
+
+      if (data.success) {
+        router.push(`/interview/${token}/instructions`);
+      } else {
+        setError(data.message || 'Invalid OTP. Please try again.');
+        setLoading(false);
+      }
+    } catch (err) {
+      setError('Verification failed. Please try again.');
       setLoading(false);
     }
   };

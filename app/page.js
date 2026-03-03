@@ -42,7 +42,7 @@ export default function Home() {
             AI Interview System
           </h1>
           <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-            Experience the future of recruitment with our AI-powered interview platform. 
+            Experience the future of recruitment with our AI-powered interview platform.
             Designed for modern hiring teams and candidates alike.
           </p>
         </motion.div>
@@ -93,7 +93,7 @@ export default function Home() {
             <p className="mb-6 opacity-90">
               To begin an interview, you'll need a valid interview link provided by your interviewer.
             </p>
-            
+
             <div className="space-y-4">
               <Button
                 size="lg"
@@ -108,7 +108,7 @@ export default function Home() {
               >
                 Enter Interview Token
               </Button>
-              
+
               <div className="text-sm opacity-80">
                 <p>For demo purposes, you can try these tokens:</p>
                 <div className="mt-2 space-x-4">

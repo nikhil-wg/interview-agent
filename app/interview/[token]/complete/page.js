@@ -9,7 +9,9 @@ import {
   FileText,
   Download,
   ExternalLink,
-  ThumbsUp
+  ThumbsUp,
+  TrendingUp,
+  Award
 } from 'lucide-react';
 import { useParams } from 'next/navigation';
 import InterviewLayout from '../../../components/layout/InterviewLayout';
@@ -22,25 +24,69 @@ const CompletePage = () => {
   const [rating, setRating] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [evaluation, setEvaluation] = useState(null);
+  const [stats, setStats] = useState(null);
+  const [loading, setLoading] = useState(true);
   const token = params?.token;
 
-  // Mock interview statistics
-  const interviewStats = {
-    duration: '18:32',
-    questionsAnswered: 5,
-    totalQuestions: 5,
-    completionDate: new Date().toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long', 
-      day: 'numeric'
-    })
+  useEffect(() => {
+    loadResults();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const loadResults = async () => {
+    // First check sessionStorage (set by interview page)
+    const cached = sessionStorage.getItem(`evaluation_${token}`);
+    if (cached) {
+      try {
+        setEvaluation(JSON.parse(cached));
+      } catch {}
+    }
+
+    // Also fetch from API for full stats
+    try {
+      const res = await fetch(`/api/interview/result?token=${encodeURIComponent(token)}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.evaluation) setEvaluation(data.evaluation);
+        if (data.stats) setStats(data.stats);
+      }
+    } catch (err) {
+      console.error('Failed to fetch results:', err);
+    }
+
+    setLoading(false);
   };
+
+  const interviewStats = stats || {
+    duration: '--:--',
+    questionsAnswered: '--',
+    completedAt: new Date().toISOString(),
+    candidateName: '',
+    jobTitle: '',
+  };
+
+  const completionDate = interviewStats.completedAt
+    ? new Date(interviewStats.completedAt).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+      })
+    : new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
 
   const handleSubmitFeedback = async () => {
     setSubmitting(true);
     
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1500));
+    try {
+      await fetch('/api/interview/complete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          token,
+          feedback: { rating, text: feedback },
+        }),
+      });
+    } catch {}
     
     setSubmitted(true);
     setSubmitting(false);
@@ -48,6 +94,21 @@ const CompletePage = () => {
 
   const handleClose = () => {
     window.close();
+  };
+
+  // Score badge color
+  const getScoreColor = (score) => {
+    if (score >= 8) return 'text-green-700 bg-green-100';
+    if (score >= 6) return 'text-blue-700 bg-blue-100';
+    if (score >= 4) return 'text-yellow-700 bg-yellow-100';
+    return 'text-red-700 bg-red-100';
+  };
+
+  const getRecColor = (rec) => {
+    if (rec === 'Strong Hire') return 'text-green-800 bg-green-100 border-green-300';
+    if (rec === 'Hire') return 'text-blue-800 bg-blue-100 border-blue-300';
+    if (rec === 'Borderline') return 'text-yellow-800 bg-yellow-100 border-yellow-300';
+    return 'text-red-800 bg-red-100 border-red-300';
   };
 
   return (
@@ -100,17 +161,71 @@ const CompletePage = () => {
               <div>
                 <span className="text-gray-600">Questions:</span>
                 <div className="font-medium mt-1">
-                  {interviewStats.questionsAnswered}/{interviewStats.totalQuestions}
+                  {interviewStats.questionsAnswered}
                 </div>
               </div>
               
               <div className="col-span-2">
                 <span className="text-gray-600">Completed on:</span>
-                <div className="font-medium mt-1">{interviewStats.completionDate}</div>
+                <div className="font-medium mt-1">{completionDate}</div>
               </div>
             </div>
           </Card>
         </motion.div>
+
+        {/* Evaluation Scores */}
+        {evaluation && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.35 }}
+          >
+            <Card padding="md">
+              <h3 className="font-semibold text-gray-900 mb-3 flex items-center">
+                <TrendingUp className="w-5 h-5 mr-2 text-indigo-600" />
+                Evaluation Scores
+              </h3>
+
+              <div className="space-y-2">
+                {[
+                  { label: 'Technical Depth', value: evaluation.technicalDepth },
+                  { label: 'Problem Solving', value: evaluation.problemSolving },
+                  { label: 'System Design', value: evaluation.systemDesignThinking },
+                  { label: 'Communication', value: evaluation.communicationClarity },
+                ].map((item) => (
+                  <div key={item.label} className="flex items-center justify-between">
+                    <span className="text-sm text-gray-600">{item.label}</span>
+                    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${getScoreColor(item.value)}`}>
+                      {item.value}/10
+                    </span>
+                  </div>
+                ))}
+              </div>
+
+              <div className="mt-4 pt-3 border-t border-gray-200 flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <Award className="w-5 h-5 text-indigo-600" />
+                  <span className="font-semibold text-gray-900">Overall</span>
+                </div>
+                <span className={`text-sm font-bold px-3 py-1 rounded-full ${getScoreColor(evaluation.overallScore)}`}>
+                  {evaluation.overallScore}/10
+                </span>
+              </div>
+
+              {evaluation.hireRecommendation && (
+                <div className={`mt-3 text-center text-sm font-medium px-3 py-2 rounded-lg border ${getRecColor(evaluation.hireRecommendation)}`}>
+                  Recommendation: {evaluation.hireRecommendation}
+                </div>
+              )}
+
+              {evaluation.summary && (
+                <p className="mt-3 text-xs text-gray-600 leading-relaxed">
+                  {evaluation.summary}
+                </p>
+              )}
+            </Card>
+          </motion.div>
+        )}
 
         {/* Status Message */}
         <motion.div

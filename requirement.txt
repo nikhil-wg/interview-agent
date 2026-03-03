@@ -1,0 +1,727 @@
+================================================================================
+  AI INTERVIEW MODULE — DATA CONTRACT SPECIFICATION
+================================================================================
+  Document Version : 1.0
+  Date             : March 4, 2026
+  Module           : Dynamic AI-Powered Interview Agent
+  Stack            : Next.js 16 (App Router) · Groq LLM (llama-3.1-8b-instant)
+                     Browser SpeechRecognition (STT) · Browser SpeechSynthesis (TTS)
+================================================================================
+
+
+1. OVERVIEW
+--------------------------------------------------------------------------------
+
+  The AI Interview Module is a voice-based, resume-aware, adaptive technical
+  interview system. It conducts real-time interviews with candidates using:
+
+  • Groq LLM (llama-3.1-8b-instant) for dynamic question generation
+  • Browser SpeechRecognition API for speech-to-text
+  • Browser SpeechSynthesis API for text-to-speech
+  • Token-based access control (each interview has a unique token/link)
+  • Strict turn-based conversation (AI speaks → mic enables → user speaks)
+
+  The AI interviewer ("Sarah") dynamically generates questions based on the
+  candidate's resume, their live answers, and the job requirements — never
+  from a pre-written list. It probes 3-4 layers deep into each project,
+  covering architecture, trade-offs, scaling, and edge cases.
+
+  After ~12-15 exchanges, the AI produces a structured JSON evaluation with
+  scores, strengths, weaknesses, and a hire recommendation.
+
+
+2. PURPOSE OF THIS DATA CONTRACT
+--------------------------------------------------------------------------------
+
+  This document defines the exact data format that the backend MUST provide
+  to the interview module. It serves as:
+
+  • The official contract between backend team and frontend/AI module
+  • A reference for database schema design
+  • A validation spec for API responses
+  • A guide for LLM prompt token optimization
+
+  All data must be STRUCTURED (not raw PDF text). The AI needs project-level
+  details for dynamic probing and compares candidate skills against job
+  requirements.
+
+
+3. REQUIRED API ENDPOINT
+--------------------------------------------------------------------------------
+
+  Endpoint : GET /api/interview/:token
+  Purpose  : Retrieve full interview session data for a given token
+  Auth     : Token itself acts as authentication (unique, unguessable)
+
+  Flow:
+    1. Candidate receives interview link containing token
+    2. Frontend calls GET /api/interview/:token
+    3. Backend validates token and returns candidate + job data
+    4. Frontend uses this data to initialize the AI interview session
+
+
+4. FULL JSON RESPONSE FORMAT
+--------------------------------------------------------------------------------
+
+  {
+    "interviewId": "tkn_a1b2c3d4e5",
+    "status": "pending",
+    "createdAt": "2026-03-04T10:00:00.000Z",
+    "expiresAt": "2026-03-05T10:00:00.000Z",
+
+    "candidate": {
+      "id": "cand_001",
+      "name": "Rahul Sharma",
+      "email": "rahul@example.com",
+      "yearsExperience": 2,
+      "skills": [
+        "React",
+        "Node.js",
+        "Python",
+        "Firebase",
+        "MongoDB",
+        "TailwindCSS",
+        "Next.js"
+      ],
+      "projects": [
+        {
+          "name": "AI Trip Planner",
+          "techStack": ["React", "Firebase", "Gemini API", "TailwindCSS"],
+          "description": "AI-powered travel planning app that generates personalized itineraries based on user preferences, budget, and travel dates."
+        },
+        {
+          "name": "E-Commerce Platform",
+          "techStack": ["Next.js", "MongoDB", "Stripe", "Node.js"],
+          "description": "Full-stack e-commerce with product catalog, Stripe payments, and role-based admin dashboard."
+        },
+        {
+          "name": "Real-Time Chat Application",
+          "techStack": ["React", "Socket.io", "Node.js", "MongoDB"],
+          "description": "Real-time messaging app with private/group chat, typing indicators, read receipts, and file sharing via WebSockets."
+        }
+      ]
+    },
+
+    "job": {
+      "id": "job_001",
+      "title": "Full Stack Developer",
+      "requiredSkills": [
+        "React",
+        "Node.js",
+        "System Design",
+        "REST APIs",
+        "Database Design"
+      ],
+      "experienceLevel": "Junior to Mid-Level (1-3 years)",
+      "description": "Build and maintain customer-facing web applications using React and Node.js."
+    }
+  }
+
+
+5. FIELD-BY-FIELD EXPLANATION
+--------------------------------------------------------------------------------
+
+  5.1  interviewId
+  ──────────────────────────────────────────────────────────────────────────
+  Type     : string
+  Required : YES
+  Example  : "tkn_a1b2c3d4e5"
+  Purpose  : Unique token that identifies this interview session. Used as
+             the URL parameter and primary lookup key across all API calls
+             (validate, verify, start, chat, complete, result).
+
+  5.2  status
+  ──────────────────────────────────────────────────────────────────────────
+  Type     : string (enum)
+  Required : YES
+  Values   : "pending" | "in_progress" | "completed" | "expired"
+  Purpose  : Guards state transitions. Only "pending" sessions can be
+             started. Only "in_progress" sessions accept chat messages.
+             "completed" and "expired" sessions are rejected.
+
+  5.3  createdAt
+  ──────────────────────────────────────────────────────────────────────────
+  Type     : string (ISO 8601 datetime)
+  Required : YES
+  Example  : "2026-03-04T10:00:00.000Z"
+  Purpose  : Audit trail, duration calculation, admin dashboard sorting.
+
+  5.4  expiresAt
+  ──────────────────────────────────────────────────────────────────────────
+  Type     : string (ISO 8601 datetime)
+  Required : NO (optional)
+  Example  : "2026-03-05T10:00:00.000Z"
+  Purpose  : If set, the backend should reject the token after this time.
+             Useful for production link expiry (e.g., 24-48 hours).
+
+  5.5  candidate.id
+  ──────────────────────────────────────────────────────────────────────────
+  Type     : string
+  Required : NO (optional)
+  Example  : "cand_001"
+  Purpose  : Database foreign key for joining with candidate records.
+             Not consumed by the AI prompt or frontend UI.
+
+  5.6  candidate.name
+  ──────────────────────────────────────────────────────────────────────────
+  Type     : string
+  Required : YES
+  Example  : "Rahul Sharma"
+  Purpose  : Used in the AI system prompt (addresses candidate by name),
+             the UI avatar (first character), and the result page.
+
+  5.7  candidate.email
+  ──────────────────────────────────────────────────────────────────────────
+  Type     : string
+  Required : NO (optional)
+  Example  : "rahul@example.com"
+  Purpose  : Only used in the OTP verification flow. Not sent to the LLM.
+
+  5.8  candidate.yearsExperience
+  ──────────────────────────────────────────────────────────────────────────
+  Type     : number (integer, >= 0)
+  Required : YES
+  Example  : 2
+  Purpose  : Injected into the system prompt. The AI uses this to calibrate
+             question difficulty — harder questions for senior candidates,
+             more foundational questions for juniors.
+
+  5.9  candidate.skills[]
+  ──────────────────────────────────────────────────────────────────────────
+  Type     : string[]
+  Required : YES (min 1 entry)
+  Example  : ["React", "Node.js", "Python", "Firebase"]
+  Purpose  : Flat array of technology names. The AI cross-references these
+             against job.requiredSkills[] to identify skill gaps and
+             decides which technologies to probe deeper.
+
+  NOTE: Do NOT include proficiency levels (e.g., "React: Advanced").
+        The AI infers proficiency through live conversation probing.
+
+  5.10 candidate.projects[]
+  ──────────────────────────────────────────────────────────────────────────
+  Type     : array of Project objects (min 1)
+  Required : YES
+  Purpose  : The CORE data for project-based interviewing. The AI selects
+             projects from this list, asks about architecture decisions,
+             trade-offs, scaling approaches, and edge cases.
+
+    5.10.1  candidate.projects[].name
+    ────────────────────────────────────────────────────────────────────────
+    Type     : string
+    Required : YES
+    Example  : "AI Trip Planner"
+    Purpose  : The AI references projects by name during the interview.
+
+    5.10.2  candidate.projects[].techStack[]
+    ────────────────────────────────────────────────────────────────────────
+    Type     : string[] (min 1)
+    Required : YES
+    Example  : ["React", "Firebase", "Gemini API", "TailwindCSS"]
+    Purpose  : The AI drills into specific technology choices — "Why did
+               you choose Firebase over a traditional SQL database?"
+
+    5.10.3  candidate.projects[].description
+    ────────────────────────────────────────────────────────────────────────
+    Type     : string (max 500 characters recommended)
+    Required : YES
+    Example  : "AI-powered travel planning app that generates personalized
+               itineraries based on user preferences, budget, and travel dates."
+    Purpose  : 1-2 sentences describing WHAT the project does and HOW
+               (architecture). The AI generates follow-up questions from
+               this. Keep it concise — longer descriptions waste LLM tokens
+               without adding signal.
+
+  5.11 job.id
+  ──────────────────────────────────────────────────────────────────────────
+  Type     : string
+  Required : NO (optional)
+  Example  : "job_001"
+  Purpose  : Database reference. Not consumed by prompt or frontend.
+
+  5.12 job.title
+  ──────────────────────────────────────────────────────────────────────────
+  Type     : string
+  Required : YES
+  Example  : "Full Stack Developer"
+  Purpose  : Shown in the UI header, used in system prompt context
+             ("a company hiring for Full Stack Developer"), and displayed
+             on the result page.
+
+  5.13 job.requiredSkills[]
+  ──────────────────────────────────────────────────────────────────────────
+  Type     : string[] (min 1)
+  Required : YES
+  Example  : ["React", "Node.js", "System Design", "REST APIs"]
+  Purpose  : The AI compares these against candidate.skills[] to find
+             gaps and probes accordingly. Skills present in requiredSkills
+             but missing from candidate.skills get extra questioning.
+
+  5.14 job.experienceLevel
+  ──────────────────────────────────────────────────────────────────────────
+  Type     : string
+  Required : YES
+  Example  : "Junior to Mid-Level (1-3 years)"
+  Purpose  : Human-readable string (not a number). The LLM interprets it
+             naturally to calibrate difficulty alongside yearsExperience.
+
+  5.15 job.description
+  ──────────────────────────────────────────────────────────────────────────
+  Type     : string
+  Required : NO (optional)
+  Example  : "Build and maintain customer-facing web applications."
+  Purpose  : Adds context about the role. Not currently injected into the
+             prompt but recommended for richer AI understanding. Keep to
+             1 sentence — job.title + requiredSkills already provide
+             sufficient context.
+
+
+6. MANDATORY vs OPTIONAL FIELDS
+--------------------------------------------------------------------------------
+
+  ┌──────────────────────────────────────┬───────────┬──────────────────────────┐
+  │ Field                                │ Required  │ Reason                   │
+  ├──────────────────────────────────────┼───────────┼──────────────────────────┤
+  │ interviewId                          │ MANDATORY │ Token-based routing       │
+  │ status                               │ MANDATORY │ State guard              │
+  │ createdAt                            │ MANDATORY │ Audit / duration calc    │
+  │ expiresAt                            │ Optional  │ Link expiry              │
+  │ candidate.id                         │ Optional  │ DB join only             │
+  │ candidate.name                       │ MANDATORY │ Prompt + UI + results    │
+  │ candidate.email                      │ Optional  │ OTP verification only    │
+  │ candidate.yearsExperience            │ MANDATORY │ Difficulty calibration   │
+  │ candidate.skills[]                   │ MANDATORY │ Skill-gap analysis       │
+  │ candidate.projects[]                 │ MANDATORY │ Project-based probing    │
+  │ candidate.projects[].name            │ MANDATORY │ AI references by name    │
+  │ candidate.projects[].techStack[]     │ MANDATORY │ Tech-specific drilling   │
+  │ candidate.projects[].description     │ MANDATORY │ Question generation      │
+  │ job.id                               │ Optional  │ DB reference only        │
+  │ job.title                            │ MANDATORY │ UI + prompt context      │
+  │ job.requiredSkills[]                 │ MANDATORY │ Skill comparison         │
+  │ job.experienceLevel                  │ MANDATORY │ Difficulty calibration   │
+  │ job.description                      │ Optional  │ Extra context            │
+  └──────────────────────────────────────┴───────────┴──────────────────────────┘
+
+
+7. DATA VALIDATION RULES
+--------------------------------------------------------------------------------
+
+  Rule                                          │ Enforcement
+  ──────────────────────────────────────────────┼────────────────────────────────
+  interviewId is non-empty string               │ API route: if (!token) → 400
+  status is valid enum value                    │ DB schema + route guards
+  Status transitions: pending → in_progress     │ /api/interview/start
+    → completed only                            │
+  candidate.name is non-empty                   │ DB schema: name.trim().length>0
+  candidate.yearsExperience >= 0                │ DB schema: min: 0
+  candidate.skills has >= 1 entry               │ DB schema: array validator
+  candidate.projects has >= 1 entry             │ DB schema: array validator
+  candidate.projects[].techStack >= 1 entry     │ DB schema: array validator
+  candidate.projects[].description <= 500 chars │ Pre-insert truncation
+  job.title is non-empty                        │ DB schema validation
+  job.requiredSkills has >= 1 entry             │ DB schema: array validator
+  job.experienceLevel is non-empty              │ DB schema validation
+  Evaluation scores clamped to 1-10             │ evaluationDetector.js
+  hireRecommendation is valid enum              │ evaluationDetector.js
+  strengths/weaknesses must be arrays           │ evaluationDetector.js
+  Expired tokens rejected                       │ /api/interview/validate → 410
+  Completed tokens reject new interactions      │ /api/interview/start,chat → 410
+  userMessage non-empty on chat                 │ /api/interview/chat → 400
+
+
+8. EXAMPLE VALID RESPONSE
+--------------------------------------------------------------------------------
+
+  GET /api/interview/demo-valid
+
+  Status: 200 OK
+
+  {
+    "interviewId": "demo-valid",
+    "status": "pending",
+    "createdAt": "2026-03-04T10:00:00.000Z",
+
+    "candidate": {
+      "id": "cand_001",
+      "name": "Rahul Sharma",
+      "email": "rahul@example.com",
+      "yearsExperience": 2,
+      "skills": [
+        "React",
+        "Node.js",
+        "Python",
+        "Firebase",
+        "MongoDB",
+        "TailwindCSS",
+        "Next.js"
+      ],
+      "projects": [
+        {
+          "name": "AI Trip Planner",
+          "techStack": ["React", "Firebase", "Gemini API", "TailwindCSS"],
+          "description": "AI-powered travel planning app that generates personalized itineraries based on user preferences, budget, and travel dates. Uses Gemini API for intelligent recommendations and Firebase for real-time data storage and authentication."
+        },
+        {
+          "name": "E-Commerce Platform",
+          "techStack": ["Next.js", "MongoDB", "Stripe", "Node.js"],
+          "description": "Full-stack e-commerce platform with product catalog, cart management, Stripe payment integration, and admin dashboard. Supports multi-vendor setup with role-based access control."
+        },
+        {
+          "name": "Real-Time Chat Application",
+          "techStack": ["React", "Socket.io", "Node.js", "MongoDB"],
+          "description": "Real-time messaging application with private and group chat support, typing indicators, read receipts, and file sharing. Uses WebSockets for instant message delivery."
+        }
+      ]
+    },
+
+    "job": {
+      "id": "job_001",
+      "title": "Full Stack Developer",
+      "requiredSkills": [
+        "React",
+        "Node.js",
+        "System Design",
+        "REST APIs",
+        "Database Design"
+      ],
+      "experienceLevel": "Junior to Mid-Level (1-3 years)",
+      "description": "Build and maintain customer-facing web applications using React and Node.js."
+    }
+  }
+
+
+9. EXAMPLE ERROR RESPONSES
+--------------------------------------------------------------------------------
+
+  9.1  Invalid Token
+  ──────────────────────────────────────────────────────────────────────────
+  GET /api/interview/invalid-token-xyz
+
+  Status: 404 Not Found
+
+  {
+    "status": "invalid",
+    "message": "Interview link is not valid"
+  }
+
+  9.2  Expired Token
+  ──────────────────────────────────────────────────────────────────────────
+  GET /api/interview/expired-token-abc
+
+  Status: 410 Gone
+
+  {
+    "status": "expired",
+    "message": "Interview link has expired"
+  }
+
+  9.3  Already Completed
+  ──────────────────────────────────────────────────────────────────────────
+  GET /api/interview/completed-token-def
+
+  Status: 410 Gone
+
+  {
+    "status": "completed",
+    "message": "Interview has already been completed"
+  }
+
+  9.4  Missing Token
+  ──────────────────────────────────────────────────────────────────────────
+  GET /api/interview/
+
+  Status: 400 Bad Request
+
+  {
+    "status": "invalid",
+    "message": "No token provided"
+  }
+
+
+10. INTERVIEW EVALUATION RESULT FORMAT
+--------------------------------------------------------------------------------
+
+  After the interview concludes (~12-15 exchanges), the AI returns a
+  structured JSON evaluation. This is detected by evaluationDetector.js,
+  validated, score-clamped, and stored in the session.
+
+  Retrieved via: GET /api/interview/result?token=xxx
+
+  Response:
+
+  {
+    "evaluation": {
+      "technicalDepth": 7,
+      "problemSolving": 6,
+      "systemDesignThinking": 5,
+      "communicationClarity": 8,
+      "strengths": [
+        "Strong understanding of React component architecture",
+        "Good practical experience with Firebase and real-time features",
+        "Clear and structured communication style"
+      ],
+      "weaknesses": [
+        "Limited depth in system design and scalability thinking",
+        "Could improve understanding of database indexing strategies",
+        "Needs more exposure to production deployment and monitoring"
+      ],
+      "overallScore": 7,
+      "hireRecommendation": "Hire",
+      "summary": "Rahul demonstrates solid practical skills in full-stack development with React and Node.js. His project experience shows good problem-solving ability, particularly in real-time features. While system design thinking needs development, his communication skills and hands-on experience make him a suitable candidate for a junior to mid-level role."
+    },
+    "stats": {
+      "duration": "12:34",
+      "durationSeconds": 754,
+      "questionsAnswered": 14,
+      "completedAt": "2026-03-04T10:25:34.000Z",
+      "candidateName": "Rahul Sharma",
+      "jobTitle": "Full Stack Developer"
+    }
+  }
+
+  Evaluation Field Details:
+
+  ┌──────────────────────────┬────────┬──────────────────────────────────────┐
+  │ Field                    │ Type   │ Description                          │
+  ├──────────────────────────┼────────┼──────────────────────────────────────┤
+  │ technicalDepth           │ 1-10   │ Depth of technical knowledge         │
+  │ problemSolving           │ 1-10   │ Approach to solving problems         │
+  │ systemDesignThinking     │ 1-10   │ Architecture & scalability thinking  │
+  │ communicationClarity     │ 1-10   │ Clarity of explanations              │
+  │ strengths                │ str[]  │ Key candidate strengths              │
+  │ weaknesses               │ str[]  │ Areas for improvement                │
+  │ overallScore             │ 1-10   │ Holistic assessment score            │
+  │ hireRecommendation       │ enum   │ Strong Hire | Hire | Borderline |    │
+  │                          │        │ No Hire                              │
+  │ summary                  │ string │ Professional evaluation paragraph    │
+  └──────────────────────────┴────────┴──────────────────────────────────────┘
+
+
+11. LLM OPTIMIZATION NOTES
+--------------------------------------------------------------------------------
+
+  11.1  Structured Resume — NOT Raw PDF Text
+  ──────────────────────────────────────────────────────────────────────────
+  The AI prompt is built from structured fields, not raw resume text.
+  Raw PDF text wastes 500-2000 tokens on formatting artifacts, headers,
+  and irrelevant sections. Structured data uses ~150-300 tokens.
+
+  DO:   Send candidate.skills as ["React", "Node.js", "Python"]
+  DON'T: Send "SKILLS: React (Advanced), Node.js (Intermediate)..."
+
+  DO:   Send project descriptions as 1-2 concise sentences
+  DON'T: Send full README or multi-paragraph project descriptions
+
+  11.2  Fields Excluded to Save Tokens
+  ──────────────────────────────────────────────────────────────────────────
+  The following fields are intentionally EXCLUDED because they waste
+  LLM tokens without contributing to interview quality:
+
+  • candidate.phone              — Never used in prompt or UI
+  • candidate.address/location   — Irrelevant to technical interview
+  • candidate.education          — AI doesn't probe education (~50 tokens wasted)
+  • candidate.certifications     — No interview signal
+  • candidate.linkedin/github    — URLs are useless to the LLM
+  • candidate.profilePhoto       — Avatar derived from name.charAt(0)
+  • candidate.skills[].proficiency — AI infers through probing; self-reported
+                                     levels are unreliable
+  • candidate.projects[].screenshots — Binary data; irrelevant
+  • candidate.projects[].liveUrl/repoUrl — LLM cannot visit URLs
+  • candidate.projects[].startDate/endDate — Timeline irrelevant to depth
+  • candidate.projects[].role    — AI asks if relevant during conversation
+  • job.salary/benefits          — Not relevant to evaluation
+  • job.location/remote          — Not relevant
+  • job.department               — Not relevant
+
+  11.3  Token Budget Breakdown
+  ──────────────────────────────────────────────────────────────────────────
+  System prompt (with candidate data)  : ~600-800 tokens
+  Per conversation exchange            : ~100-200 tokens
+  Full interview (15 exchanges)        : ~2,500-4,000 tokens
+  Final evaluation JSON                : ~200-300 tokens
+  ──────────────────────────────────────────────────────────────────────────
+  Total per interview                  : ~3,500-5,500 tokens
+
+  This fits comfortably within llama-3.1-8b-instant's 128K context window.
+
+  11.4  Description Length Guidelines
+  ──────────────────────────────────────────────────────────────────────────
+  • candidate.projects[].description : Max 500 characters (1-2 sentences)
+  • job.description                  : Max 200 characters (1 sentence)
+  • Longer descriptions should be truncated server-side before storage
+
+
+================================================================================
+  API ROUTE SUMMARY
+================================================================================
+
+  ┌─────────────────────────────────┬────────┬─────────────────────────────────┐
+  │ Endpoint                        │ Method │ Purpose                         │
+  ├─────────────────────────────────┼────────┼─────────────────────────────────┤
+  │ /api/interview/validate?token=  │ GET    │ Validate token, return info     │
+  │ /api/interview/verify           │ POST   │ OTP email verification          │
+  │ /api/interview/start            │ POST   │ Initialize session, get first Q │
+  │ /api/interview/chat             │ POST   │ Send answer, get next question  │
+  │ /api/interview/complete         │ POST   │ Force-end, trigger evaluation   │
+  │ /api/interview/result?token=    │ GET    │ Fetch final evaluation + stats  │
+  └─────────────────────────────────┴────────┴─────────────────────────────────┘
+
+
+================================================================================
+  TYPESCRIPT INTERFACES (Reference)
+================================================================================
+
+  interface InterviewSession {
+    interviewId: string;
+    status: 'pending' | 'in_progress' | 'completed' | 'expired';
+    createdAt: string;
+    expiresAt?: string;
+    candidate: CandidateProfile;
+    job: JobRequirements;
+  }
+
+  interface CandidateProfile {
+    id?: string;
+    name: string;
+    email?: string;
+    yearsExperience: number;
+    skills: string[];
+    projects: CandidateProject[];
+  }
+
+  interface CandidateProject {
+    name: string;
+    techStack: string[];
+    description: string;
+  }
+
+  interface JobRequirements {
+    id?: string;
+    title: string;
+    requiredSkills: string[];
+    experienceLevel: string;
+    description?: string;
+  }
+
+  interface InterviewEvaluation {
+    technicalDepth: number;
+    problemSolving: number;
+    systemDesignThinking: number;
+    communicationClarity: number;
+    strengths: string[];
+    weaknesses: string[];
+    overallScore: number;
+    hireRecommendation: 'Strong Hire' | 'Hire' | 'Borderline' | 'No Hire';
+    summary: string;
+  }
+
+  interface ConversationMessage {
+    role: 'system' | 'user' | 'assistant';
+    content: string;
+  }
+
+  interface InterviewSessionInternal extends InterviewSession {
+    startedAt: string | null;
+    completedAt: string | null;
+    duration: number;
+    verifiedEmail: string | null;
+    conversationHistory: ConversationMessage[];
+    evaluation: InterviewEvaluation | null;
+  }
+
+
+================================================================================
+  MONGODB SCHEMA (Reference)
+================================================================================
+
+  Collection: interviews
+
+  {
+    _id: ObjectId,
+    interviewId: { type: String, required: true, unique: true, index: true },
+    status: {
+      type: String,
+      enum: ['pending', 'in_progress', 'completed', 'expired'],
+      default: 'pending',
+      index: true
+    },
+    createdAt: { type: Date, required: true, default: Date.now },
+    expiresAt: { type: Date, index: true },
+    startedAt: Date,
+    completedAt: Date,
+    duration: { type: Number, default: 0 },
+    verifiedEmail: String,
+
+    candidate: {
+      id: String,
+      name: { type: String, required: true },
+      email: String,
+      yearsExperience: { type: Number, required: true, min: 0 },
+      skills: {
+        type: [String],
+        required: true,
+        validate: v => v.length >= 1
+      },
+      projects: {
+        type: [{
+          name: { type: String, required: true },
+          techStack: {
+            type: [String],
+            required: true,
+            validate: v => v.length >= 1
+          },
+          description: { type: String, required: true }
+        }],
+        required: true,
+        validate: v => v.length >= 1
+      }
+    },
+
+    job: {
+      id: String,
+      title: { type: String, required: true },
+      requiredSkills: {
+        type: [String],
+        required: true,
+        validate: v => v.length >= 1
+      },
+      experienceLevel: { type: String, required: true },
+      description: String
+    },
+
+    conversationHistory: [{
+      role: {
+        type: String,
+        enum: ['system', 'user', 'assistant'],
+        required: true
+      },
+      content: { type: String, required: true },
+      timestamp: { type: Date, default: Date.now }
+    }],
+
+    evaluation: {
+      technicalDepth: { type: Number, min: 1, max: 10 },
+      problemSolving: { type: Number, min: 1, max: 10 },
+      systemDesignThinking: { type: Number, min: 1, max: 10 },
+      communicationClarity: { type: Number, min: 1, max: 10 },
+      strengths: [String],
+      weaknesses: [String],
+      overallScore: { type: Number, min: 1, max: 10 },
+      hireRecommendation: {
+        type: String,
+        enum: ['Strong Hire', 'Hire', 'Borderline', 'No Hire']
+      },
+      summary: String
+    }
+  }
+
+  Indexes:
+    { interviewId: 1 }              — unique, primary lookup
+    { status: 1, createdAt: -1 }    — admin dashboard queries
+    { expiresAt: 1 }                — TTL cleanup
+    { "candidate.email": 1 }        — find interviews by candidate
+
+
+================================================================================
+  END OF DOCUMENT
+================================================================================

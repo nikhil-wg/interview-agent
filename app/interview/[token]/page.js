@@ -17,31 +17,30 @@ const InterviewLinkPage = () => {
   const token = params?.token;
 
   useEffect(() => {
-    // Simulate validation of interview link
     const validateLink = async () => {
       setLoading(true);
       
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      // Simulate different scenarios based on token
-      if (token === 'invalid') {
+      try {
+        const res = await fetch(`/api/interview/validate?token=${encodeURIComponent(token)}`);
+        const data = await res.json();
+
+        if (data.status === 'valid') {
+          setLinkStatus('valid');
+          setCandidateInfo(data.candidate);
+        } else if (data.status === 'expired' || data.status === 'completed') {
+          setLinkStatus('expired');
+        } else {
+          setLinkStatus('invalid');
+        }
+      } catch (err) {
+        console.error('Validation error:', err);
         setLinkStatus('invalid');
-      } else if (token === 'expired') {
-        setLinkStatus('expired');
-      } else {
-        setLinkStatus('valid');
-        setCandidateInfo({
-          name: 'John Doe',
-          position: 'Software Engineer',
-          company: 'TechCorp Inc.'
-        });
       }
       
       setLoading(false);
     };
 
-    validateLink();
+    if (token) validateLink();
   }, [token]);
 
   const handleContinue = () => {
