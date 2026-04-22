@@ -116,8 +116,8 @@ const CompletePage = () => {
       title="Interview Complete!"
       subtitle="Thank you for completing the AI interview"
       showProgress={true}
-      currentStep={5}
-      totalSteps={5}
+      currentStep={3}
+      totalSteps={3}
     >
       <div className="space-y-6">
         {/* Success Icon */}
@@ -143,7 +143,7 @@ const CompletePage = () => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
         >
-          <Card padding="md" className="bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200">
+          <Card padding="md" className="bg-linear-to-br from-blue-50 to-indigo-50 border-blue-200">
             <h3 className="font-semibold text-gray-900 mb-3 flex items-center">
               <FileText className="w-5 h-5 mr-2 text-blue-600" />
               Interview Summary

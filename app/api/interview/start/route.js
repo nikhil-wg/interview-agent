@@ -1,7 +1,9 @@
 import { NextResponse } from 'next/server';
-import { getSession, updateSession, appendMessage } from '../../../../lib/interviewStore';
+import { getSession, updateSession } from '../../../../lib/interviewStore';
 import { buildInitialMessages } from '../../../../lib/prompts';
 import { chatCompletion } from '../../../../lib/groq';
+import { isDemoInterviewToken } from '../../../../lib/demoInterviewData';
+import { ensureDemoInterviewSession } from '../../../../lib/demoInterviewStore';
 
 /**
  * POST /api/interview/start
@@ -16,15 +18,18 @@ export async function POST(request) {
   try {
     const body = await request.json();
     const { token } = body;
+    const normalizedToken = token?.trim();
 
-    if (!token) {
+    if (!normalizedToken) {
       return NextResponse.json(
         { error: 'Token is required' },
         { status: 400 }
       );
     }
 
-    const session = getSession(token);
+    const session = isDemoInterviewToken(normalizedToken)
+      ? await ensureDemoInterviewSession({ resetCompleted: true })
+      : await getSession(normalizedToken);
 
     if (!session) {
       return NextResponse.json(
@@ -41,7 +46,7 @@ export async function POST(request) {
     }
 
     // If interview already has conversation history, resume from where we left off
-    if (session.conversationHistory.length > 0) {
+    if (session.conversationHistory && session.conversationHistory.length > 0) {
       const lastAssistant = [...session.conversationHistory]
         .reverse()
         .find((m) => m.role === 'assistant');
@@ -68,8 +73,8 @@ export async function POST(request) {
     // Get AI's opening message from Groq
     const aiReply = await chatCompletion(messages);
 
-    // Store system prompt + seed + AI reply
-    updateSession(token, {
+    // Store system prompt + seed + AI reply, mark as in_progress
+    await updateSession(normalizedToken, {
       status: 'in_progress',
       startedAt: new Date().toISOString(),
       conversationHistory: [

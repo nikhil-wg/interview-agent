@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server';
 import {
   getSession,
   appendMessage,
-  getExchangeCount,
   updateSession,
 } from '../../../../lib/interviewStore';
 import { chatCompletion } from '../../../../lib/groq';
@@ -38,7 +37,7 @@ export async function POST(request) {
       );
     }
 
-    const session = getSession(token);
+    const session = await getSession(token);
 
     if (!session) {
       return NextResponse.json(
@@ -54,19 +53,16 @@ export async function POST(request) {
       );
     }
 
-    // Append user message to history
-    appendMessage(token, { role: 'user', content: userMessage });
+    // Count exchanges BEFORE this turn (+1 for the message we're about to add)
+    const existingHistory = session.conversationHistory || [];
+    const exchanges = existingHistory.filter((m) => m.role === 'user').length + 1;
 
-    // Build messages array for Groq (system + full history)
-    const messages = session.conversationHistory.map((m) => ({
-      role: m.role,
-      content: m.content,
-    }));
+    // Build messages array for Groq: existing history + new user message
+    const messages = existingHistory.map((m) => ({ role: m.role, content: m.content }));
+    messages.push({ role: 'user', content: userMessage });
 
-    // Check exchange count — if nearing limit, hint the model to wrap up
-    const exchanges = getExchangeCount(token);
+    // If nearing the exchange limit, nudge the model to wrap up
     if (exchanges >= 12) {
-      // Add a soft nudge as a system message to encourage wrapping up
       messages.push({
         role: 'system',
         content:
@@ -74,18 +70,20 @@ export async function POST(request) {
       });
     }
 
+    // Persist user message
+    await appendMessage(token, { role: 'user', content: userMessage });
+
     // Call Groq
     const aiReply = await chatCompletion(messages);
 
-    // Append AI reply to history
-    appendMessage(token, { role: 'assistant', content: aiReply });
+    // Persist AI reply
+    await appendMessage(token, { role: 'assistant', content: aiReply });
 
     // Check if the AI returned the final evaluation JSON
     const { isEvaluation, evaluation } = detectEvaluation(aiReply);
 
     if (isEvaluation) {
-      // Mark interview as completed
-      updateSession(token, {
+      await updateSession(token, {
         status: 'completed',
         completedAt: new Date().toISOString(),
         evaluation,

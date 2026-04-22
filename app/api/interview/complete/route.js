@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server';
 import {
   getSession,
   updateSession,
-  getExchangeCount,
 } from '../../../../lib/interviewStore';
 import { chatCompletion } from '../../../../lib/groq';
 import { detectEvaluation } from '../../../../lib/evaluationDetector';
@@ -29,7 +28,7 @@ export async function POST(request) {
       );
     }
 
-    const session = getSession(token);
+    const session = await getSession(token);
 
     if (!session) {
       return NextResponse.json(
@@ -42,7 +41,7 @@ export async function POST(request) {
     if (session.status === 'completed' && session.evaluation) {
       // Optionally store feedback
       if (feedback) {
-        updateSession(token, { feedback });
+        await updateSession(token, { feedback });
       }
       return NextResponse.json({
         success: true,
@@ -73,7 +72,7 @@ export async function POST(request) {
       evaluation = parsed;
     } else {
       // Fallback evaluation if model doesn't comply
-      const exchanges = getExchangeCount(token);
+      const exchanges = (session.conversationHistory || []).filter((m) => m.role === 'user').length;
       evaluation = {
         technicalDepth: Math.min(exchanges, 5),
         problemSolving: Math.min(exchanges, 5),
@@ -92,7 +91,7 @@ export async function POST(request) {
       ? Math.round((Date.now() - new Date(session.startedAt).getTime()) / 1000)
       : 0;
 
-    updateSession(token, {
+    await updateSession(token, {
       status: 'completed',
       completedAt: new Date().toISOString(),
       evaluation,

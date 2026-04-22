@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useRouter, useParams } from 'next/navigation';
 import { 
@@ -14,13 +14,36 @@ import {
 } from 'lucide-react';
 import InterviewLayout from '../../../components/layout/InterviewLayout';
 import Button from '../../../components/ui/Button';
+import {
+  buildDemoSessionStorageRecord,
+  getInterviewSessionStorageKey,
+  isDemoInterviewToken,
+} from '@/lib/demoInterviewData';
 
 const InstructionsPage = () => {
   const router = useRouter();
   const params = useParams();
   const [loading, setLoading] = useState(false);
   const [micPermission, setMicPermission] = useState('pending'); // pending, granted, denied
+  const [sessionReady, setSessionReady] = useState(false);
   const token = params?.token;
+
+  // Guard: ensure the candidate validated via the home page first
+  useEffect(() => {
+    if (!token) { router.replace('/'); return; }
+    const sessionKey = getInterviewSessionStorageKey(token);
+    const stored = sessionStorage.getItem(sessionKey);
+    if (!stored && isDemoInterviewToken(token)) {
+      sessionStorage.setItem(sessionKey, JSON.stringify(buildDemoSessionStorageRecord()));
+      setSessionReady(true);
+      return;
+    }
+    if (!stored) {
+      router.replace('/');
+    } else {
+      setSessionReady(true);
+    }
+  }, [token, router]);
 
   const handleStartInterview = async () => {
     // Check microphone permission first
@@ -31,8 +54,8 @@ const InstructionsPage = () => {
       
       setLoading(true);
       
-      // Simulate setup time
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Brief setup delay for UX
+      await new Promise(resolve => setTimeout(resolve, 800));
       
       router.push(`/interview/${token}/interview`);
     } catch (error) {
@@ -74,13 +97,15 @@ const InstructionsPage = () => {
     orange: 'text-orange-600 bg-orange-100 border-orange-200'
   };
 
+  if (!sessionReady) return null;
+
   return (
     <InterviewLayout
       title="Interview Instructions"
       subtitle="Please review the following before starting"
       showProgress={true}
-      currentStep={3}
-      totalSteps={5}
+      currentStep={1}
+      totalSteps={3}
     >
       <div className="space-y-6">
         <div className="space-y-4">
@@ -116,7 +141,7 @@ const InstructionsPage = () => {
             animate={{ opacity: 1, y: 0 }}
             className="flex items-center space-x-2 p-4 bg-red-50 border border-red-200 rounded-lg"
           >
-            <AlertTriangle className="w-5 h-5 text-red-500 flex-shrink-0" />
+            <AlertTriangle className="w-5 h-5 text-red-500 shrink-0" />
             <div className="flex-1">
               <p className="text-sm font-medium text-red-800">Microphone Access Required</p>
               <p className="text-xs text-red-600 mt-1">
@@ -137,11 +162,11 @@ const InstructionsPage = () => {
             What to Expect
           </h3>
           <ul className="text-sm text-blue-700 space-y-1">
-            <li>• The AI interviewer will ask you questions one at a time</li>
-            <li>• Wait for the AI to finish speaking before responding</li>
-            <li>• Take a moment to think before answering</li>
-            <li>• You can pause or end the interview at any time</li>
-            <li>• Your responses will be analyzed for the final report</li>
+            <li>â€¢ The AI interviewer will ask you questions one at a time</li>
+            <li>â€¢ Wait for the AI to finish speaking before responding</li>
+            <li>â€¢ Take a moment to think before answering</li>
+            <li>â€¢ You can pause or end the interview at any time</li>
+            <li>â€¢ Your responses will be analyzed for the final report</li>
           </ul>
         </motion.div>
 
@@ -175,10 +200,10 @@ const InstructionsPage = () => {
           className="text-center pt-4 border-t border-gray-200"
         >
           <button
-            onClick={() => router.back()}
+            onClick={() => router.replace('/')}
             className="text-sm text-gray-500 hover:text-gray-700"
           >
-            ← Go Back
+            â† Back to Start
           </button>
         </motion.div>
       </div>

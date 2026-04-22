@@ -12,6 +12,7 @@ import {
   Loader2,
   AlertCircle,
 } from 'lucide-react';
+import CandidateCamera from '../../../components/CandidateCamera';
 
 // ─── State machine constants ─────────────────────────────────────────────────
 const STATE = {
@@ -511,48 +512,46 @@ const InterviewPage = () => {
           {/* Candidate Card */}
           <motion.div
             animate={{
-              boxShadow: isListening
-                ? ['0 0 0px rgba(34,197,94,0)', '0 0 40px rgba(34,197,94,0.45)', '0 0 0px rgba(34,197,94,0)']
-                : '0 0 0px rgba(34,197,94,0)',
+             
             }}
             transition={isListening ? { duration: 1.6, repeat: Infinity, ease: 'easeInOut' } : { duration: 0.3 }}
-            className="relative bg-[#16213e] rounded-2xl border border-white/10 p-8 flex flex-col items-center"
+            className="relative bg-[#16213e] rounded-2xl border border-white/10 p-8 flex flex-col items-center min-h-[340px] overflow-hidden"
           >
-            {/* Avatar */}
-            <motion.div
-              animate={isListening ? { scale: [1, 1.06, 1] } : { scale: 1 }}
-              transition={isListening ? { duration: 1.2, repeat: Infinity } : {}}
-              className="w-28 h-28 rounded-full bg-gradient-to-br from-gray-600 to-gray-800 flex items-center justify-center mb-4 text-white text-3xl font-bold"
-            >
-              {candidateInfo.avatar}
-            </motion.div>
+            {/* Live Camera Preview (Acts as absolute background when active) */}
+            <CandidateCamera 
+              fallbackAvatar={candidateInfo.avatar} 
+              isListening={isListening} 
+            />
 
-            <h3 className="text-white font-semibold text-lg">{candidateInfo.name}</h3>
-            <p className="text-gray-500 text-sm mb-4">Candidate</p>
+            {/* Info Wrapper Overlay (z-10 ensures text sits above the video background) */}
+            <div className="relative z-10 flex flex-col items-center w-full mt-auto">
+              <h3 className="text-white font-semibold text-lg drop-shadow-md">{candidateInfo.name}</h3>
+              <p className="text-gray-300 text-sm mb-4 drop-shadow-md">Candidate</p>
 
-            {/* Voice indicator */}
-            <div className="h-6 flex items-end justify-center space-x-1">
-              {isListening && [0, 1, 2, 3, 4].map((i) => (
-                <motion.div
-                  key={i}
-                  animate={{ height: [4, 14 + Math.random() * 10, 4] }}
-                  transition={{ duration: 0.4, repeat: Infinity, delay: i * 0.07 }}
-                  className="w-1 rounded-full bg-green-400"
-                />
-              ))}
+              {/* Voice indicator */}
+              <div className="h-6 flex items-end justify-center space-x-1">
+                {isListening && [0, 1, 2, 3, 4].map((i) => (
+                  <motion.div
+                    key={i}
+                    animate={{ height: [4, 14 + Math.random() * 10, 4] }}
+                    transition={{ duration: 0.4, repeat: Infinity, delay: i * 0.07 }}
+                    className="w-1 rounded-full bg-green-400 drop-shadow-[0_0_8px_rgba(74,222,128,0.8)]"
+                  />
+                ))}
+              </div>
+
+              {/* Subtitle: last user transcript */}
+              {lastUserTranscript && (
+                <motion.p
+                  key={lastUserTranscript.slice(0, 30)}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="mt-4 text-xs text-gray-200 text-center leading-relaxed line-clamp-3 max-w-[280px] bg-black/30 p-2 rounded-lg backdrop-blur-sm shadow-md"
+                >
+                  {lastUserTranscript}
+                </motion.p>
+              )}
             </div>
-
-            {/* Subtitle: last user transcript */}
-            {lastUserTranscript && (
-              <motion.p
-                key={lastUserTranscript.slice(0, 30)}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="mt-4 text-xs text-gray-400 text-center leading-relaxed line-clamp-3 max-w-[280px]"
-              >
-                {lastUserTranscript}
-              </motion.p>
-            )}
           </motion.div>
         </div>
       </div>
