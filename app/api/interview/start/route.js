@@ -28,7 +28,7 @@ export async function POST(request) {
     }
 
     const session = isDemoInterviewToken(normalizedToken)
-      ? await ensureDemoInterviewSession({ resetCompleted: true })
+      ? await ensureDemoInterviewSession(normalizedToken, { resetCompleted: true })
       : await getSession(normalizedToken);
 
     if (!session) {

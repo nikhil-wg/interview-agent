@@ -76,7 +76,7 @@ export default function Home() {
     setError('');
     sessionStorage.setItem(
       getInterviewSessionStorageKey(DEMO_INTERVIEW_TOKEN),
-      JSON.stringify(buildDemoSessionStorageRecord())
+      JSON.stringify(buildDemoSessionStorageRecord(DEMO_INTERVIEW_TOKEN))
     );
     router.push(`/interview/${DEMO_INTERVIEW_TOKEN}`);
   };

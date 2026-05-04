@@ -33,9 +33,9 @@ export default function InterviewTokenPage() {
     if (isDemoInterviewToken(token) && !stored) {
       sessionStorage.setItem(
         sessionKey,
-        JSON.stringify(buildDemoSessionStorageRecord())
+        JSON.stringify(buildDemoSessionStorageRecord(token))
       );
-      router.replace(`/interview/${DEMO_INTERVIEW_TOKEN}/instructions`);
+      router.replace(`/interview/${token}/instructions`);
       return;
     }
 

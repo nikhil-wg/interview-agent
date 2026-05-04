@@ -27,7 +27,7 @@ export default function VerifyPage() {
     const sessionKey = getInterviewSessionStorageKey(token);
     const stored = sessionStorage.getItem(sessionKey);
     if (!stored && isDemoInterviewToken(token)) {
-      sessionStorage.setItem(sessionKey, JSON.stringify(buildDemoSessionStorageRecord()));
+      sessionStorage.setItem(sessionKey, JSON.stringify(buildDemoSessionStorageRecord(token)));
       router.replace(`/interview/${token}/instructions`);
       return;
     }

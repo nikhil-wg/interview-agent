@@ -34,7 +34,7 @@ export async function POST(request) {
     }
 
     if (isDemoInterviewToken(normalizedToken)) {
-      const session = await ensureDemoInterviewSession({ resetCompleted: true });
+      const session = await ensureDemoInterviewSession(normalizedToken, { resetCompleted: true });
 
       return NextResponse.json({
         interviewId: session.interviewId,
@@ -101,3 +101,7 @@ export async function POST(request) {
     );
   }
 }
+
+// force reload
+
+// force reload for demo3
